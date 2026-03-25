@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NHS Meeting Cost Calculator · 2025/26</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f0f4f5; min-height: 100vh; padding: 24px 16px; color: #1a1a2e; }
+  .wrap { max-width: 720px; margin: 0 auto; }
+
+  /* Header */
+  .header { background: #003087; padding: 20px 24px; border-radius: 12px 12px 0 0; display: flex; align-items: center; gap: 12px; }
+  .header-icon { width: 36px; height: 36px; background: rgba(255,255,255,0.15); border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .header h1 { color: #fff; font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+  .header p { color: rgba(255,255,255,0.7); font-size: 12px; margin-top: 2px; }
+
+  /* Card */
+  .card { border: 1px solid #e0e0e0; border-top: none; background: #fff; border-radius: 0 0 12px 12px; }
+
+  /* Guide panel */
+  .guide-toggle { width: 100%; padding: 14px 24px; background: #eaf1f6; border: none; border-bottom: 1px solid #e0e0e0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-weight: 600; color: #003087; font-family: inherit; }
+  .guide-toggle:hover { background: #dce7ef; }
+  .guide-arrow { transition: transform 0.25s; font-size: 12px; }
+  .guide-arrow.open { transform: rotate(180deg); }
+  .guide-body { overflow: hidden; max-height: 0; transition: max-height 0.4s ease; }
+  .guide-body.open { max-height: 2400px; }
+  .guide-inner { padding: 20px 24px; border-bottom: 1px solid #e0e0e0; }
+  .guide-intro { font-size: 14px; color: #333; line-height: 1.65; margin-bottom: 16px; }
+  .steps { list-style: none; counter-reset: steps; margin-bottom: 16px; }
+  .steps li { counter-increment: steps; padding: 10px 0 10px 44px; position: relative; font-size: 14px; line-height: 1.55; color: #333; border-bottom: 1px solid #f0f0f0; }
+  .steps li:last-child { border-bottom: none; }
+  .steps li::before { content: counter(steps); position: absolute; left: 0; top: 10px; width: 28px; height: 28px; border-radius: 50%; background: #003087; color: #fff; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+  .step-detail { font-size: 12.5px; color: #555; margin-top: 4px; line-height: 1.55; }
+  .step-detail strong { color: #1a1a2e; }
+  .guide-glossary { padding: 14px 16px; background: #f8f9fa; border-radius: 8px; margin-top: 4px; }
+  .guide-glossary h4 { font-size: 13px; font-weight: 600; color: #333; margin-bottom: 8px; }
+  .gl-row { display: flex; font-size: 13px; padding: 5px 0; border-bottom: 1px solid #eee; gap: 8px; }
+  .gl-row:last-child { border-bottom: none; }
+  .gl-term { font-weight: 600; color: #1a1a2e; min-width: 175px; flex-shrink: 0; }
+  .gl-def { color: #555; line-height: 1.45; }
+  @media (max-width: 520px) {
+    .gl-row { flex-direction: column; gap: 1px; }
+    .gl-term { min-width: auto; }
+  }
+
+  /* Mode selector */
+  .mode-bar { display: flex; border-bottom: 1px solid #e0e0e0; background: #f8f9fa; }
+  .mode-btn { flex: 1; padding: 12px 16px; border: none; background: none; font-size: 14px; font-family: inherit; cursor: pointer; color: #666; position: relative; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .mode-btn:first-child { border-right: 1px solid #e0e0e0; }
+  .mode-btn.active { color: #003087; font-weight: 600; background: #fff; }
+  .mode-btn.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 3px; background: #003087; }
+  .mode-btn svg { flex-shrink: 0; }
+  .mode-hint { font-size: 12px; color: #888; text-align: center; padding: 6px 0 0; line-height: 1.4; }
+
+  /* Timer area */
+  .timer-area { text-align: center; padding: 24px 24px 20px; border-bottom: 1px solid #f0f0f0; }
+  .timer-clock { font-size: 48px; font-weight: 300; font-variant-numeric: tabular-nums; letter-spacing: 2px; color: #666; transition: color 0.3s; }
+  .timer-clock.active { color: #003087; }
+  .timer-cost { font-size: 36px; font-weight: 600; color: #333; margin-top: 4px; font-variant-numeric: tabular-nums; transition: color 0.3s; }
+  .timer-cost.active { color: #d4351c; }
+  .timer-sub { font-size: 13px; color: #666; margin-top: 4px; }
+  .timer-btns { display: flex; justify-content: center; gap: 8px; margin-top: 14px; }
+
+  /* Duration inputs */
+  .duration-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; }
+  .dur-field { display: flex; align-items: center; gap: 5px; }
+  .dur-field input { width: 58px; text-align: center; padding: 7px 4px; border-radius: 6px; border: 1px solid #ccc; font-size: 16px; font-weight: 500; font-family: inherit; }
+  .dur-field input:focus { outline: none; border-color: #003087; box-shadow: 0 0 0 2px rgba(0,48,135,0.15); }
+  .dur-field span { font-size: 14px; color: #555; }
+
+  .btn { padding: 8px 28px; border-radius: 6px; border: none; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+  .btn-primary { background: #003087; color: #fff; }
+  .btn-primary:hover { background: #00226b; }
+  .btn-danger { background: #d4351c; color: #fff; }
+  .btn-danger:hover { background: #b02a15; }
+  .btn-outline { padding: 8px 20px; border: 1px solid #ccc; background: #fff; color: #333; }
+  .btn-outline:hover { background: #f5f5f5; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .chk-label { font-size: 12px; color: #666; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; }
+  .chk-label input { accent-color: #003087; }
+
+  /* Add attendee */
+  .add-section { padding: 16px 24px; border-bottom: 1px solid #f0f0f0; background: #f8f9fa; }
+  .add-section h3 { font-size: 14px; font-weight: 600; color: #333; margin-bottom: 3px; }
+  .section-hint { font-size: 12.5px; color: #888; margin-bottom: 10px; line-height: 1.4; }
+  .add-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+  .field { min-width: 120px; }
+  .field.fw { flex: 1 1 140px; }
+  .field.band { flex: 1 1 180px; min-width: 140px; }
+  .field.uplift { flex: 0 0 80px; }
+  .field label { font-size: 11px; color: #666; display: block; margin-bottom: 3px; }
+  .field select, .field input[type="number"] { width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #ccc; font-size: 13px; background: #fff; color: #333; height: 34px; font-family: inherit; }
+  .field select:focus, .field input:focus { outline: none; border-color: #003087; box-shadow: 0 0 0 2px rgba(0,48,135,0.15); }
+  .btn-add { padding: 7px 16px; border-radius: 6px; border: 1px solid #003087; background: #003087; color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; height: 34px; font-family: inherit; }
+  .btn-add:hover { background: #00226b; }
+
+  /* List */
+  .list { padding: 0 24px; }
+  .list-empty { padding: 32px 0; text-align: center; color: #999; font-size: 14px; line-height: 1.6; }
+  .list-header { display: flex; padding: 12px 0 6px; font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #eee; }
+  .list-header span:first-child { flex: 1; }
+  .col-salary { width: 90px; text-align: right; }
+  .col-hourly { width: 70px; text-align: right; }
+  .col-rm { width: 32px; }
+  .att-row { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #f5f5f5; font-size: 14px; }
+  .att-row:last-child { border-bottom: none; }
+  .att-info { flex: 1; min-width: 0; }
+  .att-info strong { font-weight: 500; color: #1a1a2e; display: block; }
+  .att-info small { font-size: 12px; color: #888; }
+  .att-info .uplift-tag { color: #d4351c; margin-left: 4px; }
+  .att-salary { width: 90px; text-align: right; font-size: 13px; color: #666; }
+  .att-hourly { width: 70px; text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .btn-remove { width: 32px; height: 32px; border: none; background: none; cursor: pointer; font-size: 18px; color: #ccc; display: flex; align-items: center; justify-content: center; border-radius: 4px; }
+  .btn-remove:hover { color: #d4351c; }
+
+  /* Summary */
+  .summary { padding: 16px 24px 20px; border-top: 1px solid #eee; background: #f8f9fa; border-radius: 0 0 12px 12px; }
+  .summary h3 { font-size: 14px; font-weight: 600; color: #333; margin-bottom: 12px; }
+  .summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .summary-grid + .summary-grid { margin-top: 12px; }
+  .stat { background: #fff; border-radius: 8px; padding: 10px 12px; border: 1px solid #e8e8e8; }
+  .stat.accent { border-color: #003087; }
+  .stat-label { font-size: 11px; color: #888; margin-bottom: 2px; }
+  .stat-value { font-size: 16px; font-weight: 600; color: #1a1a2e; font-variant-numeric: tabular-nums; }
+  .stat.accent .stat-value { font-size: 18px; color: #003087; }
+  .footnote { font-size: 11px; color: #999; margin-top: 12px; line-height: 1.5; }
+
+  .footer { text-align: center; padding: 16px; font-size: 11px; color: #aaa; line-height: 1.6; }
+  .footer a { color: #003087; text-decoration: none; }
+
+  @media (max-width: 520px) {
+    .summary-grid { grid-template-columns: 1fr 1fr; }
+    .timer-clock { font-size: 36px; }
+    .timer-cost { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-icon">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="9" stroke="#fff" stroke-width="1.5"/><path d="M5 11h12M11 5v12" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </div>
+    <div>
+      <h1>NHS Meeting Cost Calculator</h1>
+      <p>2025/26 pay scales · England · AfC / Consultant / VSM</p>
+    </div>
+  </div>
+
+  <div class="card">
+
+    <!-- HOW TO USE -->
+    <button class="guide-toggle" id="guide-toggle" onclick="toggleGuide()">
+      <span>📋 How to use this tool — click here for instructions</span>
+      <span class="guide-arrow" id="guide-arrow">▼</span>
+    </button>
+    <div class="guide-body" id="guide-body">
+      <div class="guide-inner">
+        <p class="guide-intro">
+          This tool calculates how much an NHS meeting costs based on <strong>who attends</strong> and
+          <strong>how long it lasts</strong>. It uses the official 2025/26 pay scales for England.
+          You don't need to install anything — it runs entirely in your web browser.
+          <strong>No data is sent anywhere</strong>; everything stays on your device.
+        </p>
+
+        <ol class="steps">
+          <li>
+            <strong>Choose your mode</strong> (the two tabs below these instructions)
+            <div class="step-detail">
+              Pick <strong>"Live meeting"</strong> if you want to run a timer during a meeting that's happening right now.
+              Pick <strong>"Past meeting"</strong> if the meeting has already happened and you want to type in how long it lasted.
+            </div>
+          </li>
+          <li>
+            <strong>Add each person who attended</strong>
+            <div class="step-detail">
+              Scroll down to the grey "Add attendee" box. For each person in the meeting:<br><br>
+              <strong>1.</strong> Pick their <strong>pay framework</strong>:
+              most NHS staff are <em>"Agenda for Change"</em> (nurses, AHPs, admin, managers).
+              Hospital doctors in consultant posts → <em>"Consultant"</em>.
+              Trust board members (CEO, CFO, COO, etc.) → <em>"Very Senior Manager"</em>.<br><br>
+              <strong>2.</strong> Pick their <strong>band or threshold</strong>. If you're not sure of the exact one, a rough guess is fine — the salary shown next to each option will help you judge.<br><br>
+              <strong>3.</strong> Set the <strong>uplift %</strong>. Leave this at 0 for most people. Use 20 for consultants doing extra programmed activities, or any other local supplement.<br><br>
+              <strong>4.</strong> Click the blue <strong>"+ Add"</strong> button.<br><br>
+              Repeat for every person. You'll see them listed below. Click the <strong>×</strong> next to anyone to remove them.
+            </div>
+          </li>
+          <li>
+            <strong>If using "Live meeting" mode</strong> — press the blue <strong>Start</strong> button when the meeting begins
+            <div class="step-detail">
+              The cost ticks up in real time like a taxi meter. Press <strong>Pause</strong> to stop, <strong>Resume</strong> to continue,
+              and <strong>Reset</strong> to clear everything. You can share your screen during a Teams call to show the running total.
+            </div>
+          </li>
+          <li>
+            <strong>If using "Past meeting" mode</strong> — type in how long the meeting lasted
+            <div class="step-detail">
+              Enter hours and minutes. For example, a 90-minute meeting = 1 hour and 30 minutes.
+              The cost updates instantly as you type.
+            </div>
+          </li>
+          <li>
+            <strong>Read the summary at the bottom</strong>
+            <div class="step-detail">
+              This shows the cost per minute, the total for the meeting, and — if this meeting happens regularly — what it costs
+              over a month and a full year. The "fully loaded" figure (with on-costs ticked) is the true cost to the trust.
+            </div>
+          </li>
+        </ol>
+
+        <div class="guide-glossary">
+          <h4>Jargon buster</h4>
+          <div class="gl-row"><span class="gl-term">Agenda for Change (AfC)</span><span class="gl-def">The NHS pay system covering most staff — nurses, AHPs, admin, managers, etc. Has 9 pay bands.</span></div>
+          <div class="gl-row"><span class="gl-term">Band (e.g. Band 7)</span><span class="gl-def">A pay grade within AfC. Higher band = more senior role and higher salary.</span></div>
+          <div class="gl-row"><span class="gl-term">VSM</span><span class="gl-def">Very Senior Manager — trust board-level roles like CEO, CFO, COO, Medical Director.</span></div>
+          <div class="gl-row"><span class="gl-term">Threshold (1–5)</span><span class="gl-def">Consultant pay is in thresholds based on years of experience as a consultant, not AfC bands.</span></div>
+          <div class="gl-row"><span class="gl-term">Uplift %</span><span class="gl-def">An extra percentage added on top of base salary — e.g. 20% for consultants doing additional PAs.</span></div>
+          <div class="gl-row"><span class="gl-term">On-costs (≈35%)</span><span class="gl-def">What the trust pays on top of salary: employer's National Insurance (~15%), NHS pension contribution (~20.6%), and apprenticeship levy (~0.5%). This is the real cost to the organisation.</span></div>
+          <div class="gl-row"><span class="gl-term">£/hr (hourly rate)</span><span class="gl-def">Annual salary ÷ 1,957.5 (the contracted hours in a full-time NHS year: 37.5 hrs/week × 52.14 weeks).</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODE SELECTOR -->
+    <div class="mode-bar">
+      <button class="mode-btn active" id="mode-live" onclick="setMode('live')">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2"/><path d="M8 4.5V8l2.5 1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Live meeting
+      </button>
+      <button class="mode-btn" id="mode-past" onclick="setMode('past')">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M2 6h12" stroke="currentColor" stroke-width="1.2"/><path d="M5 1.5v3M11 1.5v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        Past meeting
+      </button>
+    </div>
+
+    <!-- TIMER / DURATION AREA -->
+    <div class="timer-area">
+      <div class="timer-clock" id="clock">00:00</div>
+      <div class="timer-cost" id="cost">£0.00</div>
+      <div class="timer-sub" id="cost-sub">Add attendees below to get started</div>
+
+      <!-- Live mode controls -->
+      <div id="live-controls">
+        <div class="timer-btns">
+          <button class="btn btn-primary" id="btn-start" disabled>Start</button>
+          <button class="btn btn-outline" id="btn-reset" style="display:none">Reset</button>
+        </div>
+      </div>
+
+      <!-- Past mode controls -->
+      <div id="past-controls" style="display:none">
+        <p class="mode-hint">Enter how long the meeting lasted:</p>
+        <div class="duration-row">
+          <div class="dur-field">
+            <input type="number" id="dur-hrs" value="1" min="0" max="12" onchange="calcPast()" oninput="calcPast()">
+            <span>hours</span>
+          </div>
+          <div class="dur-field">
+            <input type="number" id="dur-mins" value="0" min="0" max="59" onchange="calcPast()" oninput="calcPast()">
+            <span>minutes</span>
+          </div>
+        </div>
+      </div>
+
+      <label class="chk-label">
+        <input type="checkbox" id="chk-loaded" checked onchange="refresh()">
+        Include employer on-costs (NI + pension + levy ≈ 35%) — <em>this is the true cost to the trust</em>
+      </label>
+    </div>
+
+    <!-- ADD ATTENDEE -->
+    <div class="add-section">
+      <h3>Add attendee</h3>
+      <p class="section-hint">For each person in the meeting: pick their pay type, select their band, then click "+ Add". Repeat for everyone.</p>
+      <div class="add-row">
+        <div class="field fw">
+          <label>Pay framework</label>
+          <select id="sel-fw"></select>
+        </div>
+        <div class="field band">
+          <label>Band / threshold</label>
+          <select id="sel-band"></select>
+        </div>
+        <div class="field uplift">
+          <label>Uplift %</label>
+          <input type="number" id="inp-uplift" value="0" min="0" max="100">
+        </div>
+        <button class="btn-add" id="btn-add">+ Add</button>
+      </div>
+    </div>
+
+    <!-- ATTENDEE LIST -->
+    <div class="list" id="list-wrap">
+      <div class="list-empty">No attendees added yet.<br>Use the grey box above to add each person who was in the meeting.</div>
+    </div>
+
+    <!-- SUMMARY -->
+    <div class="summary" id="summary" style="display:none">
+      <h3>Meeting cost summary</h3>
+      <div class="summary-grid">
+        <div class="stat"><div class="stat-label">Attendees</div><div class="stat-value" id="s-count">0</div></div>
+        <div class="stat"><div class="stat-label">Cost per minute</div><div class="stat-value" id="s-min">£0.00</div></div>
+        <div class="stat accent"><div class="stat-label" id="s-total-label">If 1 hour</div><div class="stat-value" id="s-hour">£0.00</div></div>
+      </div>
+      <div class="summary-grid">
+        <div class="stat"><div class="stat-label">If this happens weekly</div><div class="stat-value" id="s-week">£0</div></div>
+        <div class="stat"><div class="stat-label">Monthly (×12/yr)</div><div class="stat-value" id="s-month">£0</div></div>
+        <div class="stat accent"><div class="stat-label">Annual cost (×52 weeks)</div><div class="stat-value" id="s-year">£0</div></div>
+      </div>
+      <div class="footnote">
+        Hourly rates: annual salary ÷ 1,957.5 contracted hours. On-costs: employer NI ~15%, NHS pension ~20.6%, apprenticeship levy ~0.5%.
+        AfC mid-point salaries used. Consultant figures based on 2003 contract thresholds. VSM salaries are median estimates for a mid-size specialist trust.
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Prototype for NHS trust meeting culture improvement<br>
+    Pay data from <a href="https://www.nhsemployers.org/articles/pay-scales-202526" target="_blank" rel="noopener">NHS Employers 2025/26</a> ·
+    All calculations run in your browser — no data is collected or sent anywhere
+  </div>
+</div>
+
+<script>
+const PAY = {
+  afc: { label: "Agenda for Change", bands: [
+    { id:"b2",  label:"Band 2",  salary:24465 },
+    { id:"b3",  label:"Band 3",  salary:26598 },
+    { id:"b4",  label:"Band 4",  salary:28824 },
+    { id:"b5",  label:"Band 5",  salary:34423 },
+    { id:"b6",  label:"Band 6",  salary:42631 },
+    { id:"b7",  label:"Band 7",  salary:51262 },
+    { id:"b8a", label:"Band 8a", salary:59087 },
+    { id:"b8b", label:"Band 8b", salary:68631 },
+    { id:"b8c", label:"Band 8c", salary:81652 },
+    { id:"b8d", label:"Band 8d", salary:96941 },
+    { id:"b9",  label:"Band 9",  salary:117398 }
+  ]},
+  consultant: { label: "Consultant", bands: [
+    { id:"c1", label:"Threshold 1 (new — 0 to 3 yrs)",  salary:109725 },
+    { id:"c2", label:"Threshold 2 (3 to 4 yrs)",  salary:114894 },
+    { id:"c3", label:"Threshold 3 (4 to 10 yrs)", salary:126018 },
+    { id:"c4", label:"Threshold 4 (10 to 14 yrs)",salary:139882 },
+    { id:"c5", label:"Threshold 5 (14+ yrs)",  salary:145475 }
+  ]},
+  vsm: { label: "Very Senior Manager", bands: [
+    { id:"dir", label:"Director",                 salary:140000 },
+    { id:"cfo", label:"CFO / Director of Finance", salary:150000 },
+    { id:"cio", label:"CIO / CDIO",               salary:145000 },
+    { id:"cno", label:"Chief Nurse",              salary:155000 },
+    { id:"coo", label:"COO",                      salary:155000 },
+    { id:"cmo", label:"Medical Director",         salary:175000 },
+    { id:"ceo", label:"Chief Executive",          salary:210000 }
+  ]}
+};
+
+const HPY = 1957.5, ON = 0.35;
+let attendees = [], nextId = 1;
+let mode = "live", running = false, elapsed = 0, interval = null, startTs = null;
+
+const $ = id => document.getElementById(id);
+const fmtC = v => "\u00A3" + v.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtW = v => "\u00A3" + Math.round(v).toLocaleString("en-GB");
+
+/* --- Guide --- */
+function toggleGuide() {
+  $("guide-body").classList.toggle("open");
+  $("guide-arrow").classList.toggle("open");
+}
+
+/* --- Mode --- */
+function setMode(m) {
+  mode = m;
+  $("mode-live").className = "mode-btn" + (m === "live" ? " active" : "");
+  $("mode-past").className = "mode-btn" + (m === "past" ? " active" : "");
+  $("live-controls").style.display = m === "live" ? "" : "none";
+  $("past-controls").style.display = m === "past" ? "" : "none";
+  if (m === "past" && running) {
+    clearInterval(interval); running = false;
+    $("btn-start").textContent = "Start";
+    $("btn-start").className = "btn btn-primary";
+  }
+  if (m === "live") {
+    var mins = Math.floor(elapsed / 60), secs = elapsed % 60;
+    $("clock").textContent = String(mins).padStart(2, "0") + ":" + String(secs).padStart(2, "0");
+  }
+  refresh();
+}
+
+/* --- Selects --- */
+var selFw = $("sel-fw"), selBand = $("sel-band");
+Object.entries(PAY).forEach(function(e) {
+  var o = document.createElement("option");
+  o.value = e[0]; o.textContent = e[1].label; selFw.appendChild(o);
+});
+function populateBands() {
+  selBand.innerHTML = "";
+  PAY[selFw.value].bands.forEach(function(b) {
+    var o = document.createElement("option");
+    o.value = b.id; o.textContent = b.label + " \u2014 " + fmtW(b.salary);
+    selBand.appendChild(o);
+  });
+}
+selFw.addEventListener("change", populateBands);
+populateBands();
+
+/* --- Attendees --- */
+$("btn-add").addEventListener("click", function() {
+  var fw = PAY[selFw.value], b = fw.bands.find(function(x) { return x.id === selBand.value; });
+  if (!b) return;
+  var up = Math.max(0, parseInt($("inp-uplift").value) || 0);
+  var sal = b.salary * (1 + up / 100);
+  attendees.push({ id: nextId++, framework: fw.label, band: b.label, salary: sal, uplift: up, hourly: sal / HPY });
+  renderList();
+});
+
+function removeAtt(id) {
+  attendees = attendees.filter(function(a) { return a.id !== id; });
+  renderList();
+}
+
+function renderList() {
+  var wrap = $("list-wrap"), summary = $("summary"), startBtn = $("btn-start");
+  if (attendees.length === 0) {
+    wrap.innerHTML = '<div class="list-empty">No attendees added yet.<br>Use the grey box above to add each person who was in the meeting.</div>';
+    summary.style.display = "none";
+    startBtn.disabled = true;
+    refresh(); return;
+  }
+  startBtn.disabled = false;
+  var html = '<div class="list-header"><span>Role</span><span class="col-salary">Salary</span><span class="col-hourly">\u00A3/hr</span><span class="col-rm"></span></div>';
+  attendees.forEach(function(a) {
+    html += '<div class="att-row">' +
+      '<div class="att-info"><strong>' + a.band + '</strong><small>' + a.framework +
+      (a.uplift > 0 ? '<span class="uplift-tag">+' + a.uplift + '%</span>' : '') +
+      '</small></div>' +
+      '<div class="att-salary">' + fmtW(a.salary) + '</div>' +
+      '<div class="att-hourly">' + fmtC(a.hourly) + '</div>' +
+      '<button class="btn-remove" onclick="removeAtt(' + a.id + ')">\u00D7</button></div>';
+  });
+  wrap.innerHTML = html;
+  summary.style.display = "";
+  refresh();
+}
+
+/* --- Calculations --- */
+function totalHourly() { return attendees.reduce(function(s, a) { return s + a.hourly; }, 0); }
+function isLoaded() { return $("chk-loaded").checked; }
+function effHourly() { var t = totalHourly(); return isLoaded() ? t * (1 + ON) : t; }
+
+function getSecs() {
+  if (mode === "live") return elapsed;
+  var h = Math.max(0, parseInt($("dur-hrs").value) || 0);
+  var m = Math.max(0, Math.min(59, parseInt($("dur-mins").value) || 0));
+  return h * 3600 + m * 60;
+}
+
+function refresh() {
+  var secs = getSecs(), eh = effHourly(), cost = (eh / 3600) * secs;
+
+  if (mode === "past") {
+    var ph = Math.max(0, parseInt($("dur-hrs").value) || 0);
+    var pm = Math.max(0, parseInt($("dur-mins").value) || 0);
+    $("clock").textContent = String(ph).padStart(2, "0") + ":" + String(pm).padStart(2, "0");
+  }
+
+  $("cost").textContent = fmtC(cost);
+  $("clock").className = "timer-clock" + (running ? " active" : "");
+  $("cost").className = "timer-cost" + ((running || (mode === "past" && secs > 0 && attendees.length > 0)) ? " active" : "");
+
+  if (attendees.length === 0) {
+    $("cost-sub").textContent = "Add attendees below to get started";
+  } else {
+    var lbl = isLoaded() ? "fully loaded cost" : "basic salary cost";
+    $("cost-sub").textContent = lbl + " \u00B7 " + fmtC(eh) + "/hr with " + attendees.length + " attendee" + (attendees.length !== 1 ? "s" : "");
+  }
+
+  if (attendees.length > 0) {
+    var meetHrs = secs / 3600;
+    var meetCost = eh * meetHrs;
+    $("s-count").textContent = attendees.length;
+    $("s-min").textContent = fmtC(eh / 60);
+
+    if (mode === "past" && secs > 0) {
+      var totalMins = Math.round(secs / 60);
+      $("s-total-label").textContent = "This meeting (" + totalMins + " min)";
+      $("s-hour").textContent = fmtC(meetCost);
+      $("s-week").textContent = fmtW(meetCost);
+      $("s-month").textContent = fmtW(meetCost * 12);
+      $("s-year").textContent = fmtW(meetCost * 52);
+    } else if (mode === "live" && elapsed > 0) {
+      var liveMins = Math.round(elapsed / 60);
+      $("s-total-label").textContent = "So far (" + liveMins + " min)";
+      $("s-hour").textContent = fmtC(cost);
+      $("s-week").textContent = fmtW(cost);
+      $("s-month").textContent = fmtW(cost * 12);
+      $("s-year").textContent = fmtW(cost * 52);
+    } else {
+      $("s-total-label").textContent = "If 1 hour";
+      $("s-hour").textContent = fmtC(eh);
+      $("s-week").textContent = fmtW(eh);
+      $("s-month").textContent = fmtW(eh * 12);
+      $("s-year").textContent = fmtW(eh * 52);
+    }
+  }
+}
+
+function calcPast() { if (mode === "past") refresh(); }
+
+/* --- Timer --- */
+$("btn-start").addEventListener("click", function() {
+  if (running) {
+    clearInterval(interval); running = false;
+    $("btn-start").textContent = elapsed > 0 ? "Resume" : "Start";
+    $("btn-start").className = "btn btn-primary";
+  } else {
+    startTs = Date.now() - elapsed * 1000;
+    interval = setInterval(function() {
+      elapsed = Math.floor((Date.now() - startTs) / 1000);
+      var m = Math.floor(elapsed / 60), s = elapsed % 60;
+      $("clock").textContent = String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+      refresh();
+    }, 250);
+    running = true;
+    $("btn-start").textContent = "Pause";
+    $("btn-start").className = "btn btn-danger";
+    $("btn-reset").style.display = "";
+  }
+});
+$("btn-reset").addEventListener("click", function() {
+  clearInterval(interval); running = false; elapsed = 0;
+  $("btn-start").textContent = "Start";
+  $("btn-start").className = "btn btn-primary";
+  $("btn-reset").style.display = "none";
+  $("clock").textContent = "00:00";
+  refresh();
+});
+</script>
+</body>
+</html>
